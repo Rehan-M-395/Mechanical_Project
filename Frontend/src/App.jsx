@@ -45,10 +45,12 @@ function App() {
     
     // Send to backend API
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/predict`, {
+      const formData = new FormData();
+      formData.append("file", file); // file is your File object
+
+      const response = await fetch("https://mechanical-backend.onrender.com/api/predict", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: formData,
       });
       
       if (!response.ok) {
