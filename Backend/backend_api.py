@@ -7,10 +7,10 @@ from scipy.stats import kurtosis, skew, sem
 
 app = Flask(__name__)
 
-# ✅ Allow your frontend origin (Vercel)
+# Allow all origins for CORS (for development/testing)
 cors = CORS(app, supports_credentials=True)
 
-# ✅ Load the trained model
+# Load the trained model
 model = joblib.load('best_model.joblib')
 
 def calculate_statistics(points):
@@ -33,7 +33,7 @@ def calculate_statistics(points):
 @app.route('/api/predict', methods=['POST', 'OPTIONS'])
 @cross_origin(supports_credentials=True)
 def predict():
-    # ✅ Handle preflight request
+    # Handle preflight request
     if request.method == 'OPTIONS':
         return jsonify({'status': 'CORS preflight successful'}), 200
 
@@ -66,5 +66,6 @@ def predict():
         print("🔥 ERROR in /api/predict:", e)
         return jsonify({"error": str(e)}), 500
 
-if __name__ == '__main__':
-    app.run(debug=True)
+# Do NOT include app.run() block for production with Gunicorn
+# Gunicorn will serve the app using: gunicorn backend_api:app
+
