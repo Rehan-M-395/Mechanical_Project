@@ -7,8 +7,8 @@ from scipy.stats import kurtosis, skew, sem
 
 app = Flask(__name__)
 
-# Allow all origins for CORS (for development/testing)
-cors = CORS(app, supports_credentials=True)
+# Allow only the frontend origin for CORS
+cors = CORS(app, supports_credentials=True, origins=["https://mechanical-project.vercel.app"])
 
 # Load the trained model
 model = joblib.load('best_model.joblib')
@@ -31,7 +31,7 @@ def calculate_statistics(points):
     }
 
 @app.route('/api/predict', methods=['POST', 'OPTIONS'])
-@cross_origin(supports_credentials=True)
+@cross_origin(origin="https://mechanical-project.vercel.app", supports_credentials=True)
 def predict():
     # Handle preflight request
     if request.method == 'OPTIONS':
