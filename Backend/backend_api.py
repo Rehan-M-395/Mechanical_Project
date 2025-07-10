@@ -2,15 +2,15 @@ from flask import Flask, request, jsonify
 import numpy as np
 import joblib
 import pandas as pd
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 from scipy.stats import kurtosis, skew, sem
 
 app = Flask(__name__)
 
-# ✅ Allow only your Vercel frontend
-CORS(app, supports_credentials=True, origins=["https://mechanical-project.vercel.app"])
+# ✅ Allow your frontend origin (Vercel)
+cors = CORS(app, supports_credentials=True, origins=["https://mechanical-project.vercel.app"])
 
-# ✅ Load your trained model
+# ✅ Load the trained model
 model = joblib.load('best_model.joblib')
 
 def calculate_statistics(points):
@@ -31,8 +31,9 @@ def calculate_statistics(points):
     }
 
 @app.route('/api/predict', methods=['POST', 'OPTIONS'])
+@cross_origin(origin="https://mechanical-project.vercel.app", supports_credentials=True)
 def predict():
-    # ✅ Handle CORS preflight request
+    # ✅ Handle preflight request
     if request.method == 'OPTIONS':
         return jsonify({'status': 'CORS preflight successful'}), 200
 
@@ -48,21 +49,19 @@ def predict():
         # Read the CSV file into a DataFrame
         df = pd.read_csv(file)
 
-        # Use first column of CSV
         points = df.iloc[:, 0].dropna().values
 
         features = calculate_statistics(points)
         feature_vector = np.array(list(features.values())).reshape(1, -1)
         label = model.predict(feature_vector)[0]
 
-        # Convert label to native Python type
         if isinstance(label, (np.integer, np.floating)):
             label = label.item()
         else:
             label = str(label)
 
         return jsonify({"features": features, "label": label})
-    
+
     except Exception as e:
         print("🔥 ERROR in /api/predict:", e)
         return jsonify({"error": str(e)}), 500
