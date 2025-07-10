@@ -7,8 +7,24 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-# Load your trained model
+# Load trained model
 model = joblib.load("best_model.joblib")
+
+# Correct feature order used during training (no 'Mode')
+required_feature_order = [
+    'Kurtosis',
+    'Standard Error',
+    'Maximum value',
+    'Skewness',
+    'Minimum value',
+    'Range',
+    'Count',
+    'Summation',
+    'Variance',
+    'Standard Deviation',
+    'Median',
+    'Mean'
+]
 
 @app.route('/')
 def home():
@@ -17,46 +33,48 @@ def home():
 @app.route('/api/predict', methods=['POST'])
 def predict():
     try:
-        print("📥 Received request at /api/predict")
         file = request.files.get('file')
         if not file:
             return jsonify({"error": "No file uploaded"}), 400
 
-        # Read CSV with no header
         df = pd.read_csv(file, header=None)
-
-        # Assign dummy column names
-        df.columns = [f"col_{i}" for i in range(df.shape[1])]
-
-        print("✅ DataFrame loaded:", df.shape)
-        print(df.head())
-
         if df.empty:
             return jsonify({"error": "Uploaded file is empty"}), 400
 
-        # Predict
-        predictions = model.predict(df)
-        label = predictions[0]
+        # Flatten to 1D array
+        data_series = pd.Series(df.values.flatten()).dropna()
+        if data_series.empty:
+            return jsonify({"error": "Data contains only NaNs"}), 400
 
-        # Extract basic statistical features
-        features = {
-            "Mean": float(df.mean().mean()),
-            "Median": float(df.median().mean()),
-            "Variance": float(df.var().mean()),
-            "Standard Deviation": float(df.std().mean()),
-            "Maximum": float(df.max().max()),
-            "Minimum": float(df.min().min()),
-            "Kurtosis": float(df.kurtosis().mean()),
-            "Skewness": float(df.skew().mean())
+        # Compute only the 12 required features
+        features_dict = {
+            'Kurtosis': float(data_series.kurtosis()),
+            'Standard Error': float(data_series.std() / np.sqrt(data_series.count())),
+            'Maximum value': float(data_series.max()),
+            'Skewness': float(data_series.skew()),
+            'Minimum value': float(data_series.min()),
+            'Range': float(data_series.max() - data_series.min()),
+            'Count': int(data_series.count()),
+            'Summation': float(data_series.sum()),
+            'Variance': float(data_series.var()),
+            'Standard Deviation': float(data_series.std()),
+            'Median': float(data_series.median()),
+            'Mean': float(data_series.mean())
         }
+
+        # Format as DataFrame with correct column order
+        input_df = pd.DataFrame([features_dict])[required_feature_order]
+
+        # Predict
+        prediction = model.predict(input_df)
+        label = prediction[0]
 
         return jsonify({
             "label": label,
-            "features": features
+            "features": features_dict
         })
 
     except Exception as e:
-        print("❌ Exception:", str(e))
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
