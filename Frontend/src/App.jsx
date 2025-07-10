@@ -48,7 +48,7 @@ function App() {
       const formData = new FormData();
       formData.append("file", file); // file is your File object
 
-      const response = await fetch("https://mechanical-backend.onrender.com/api/predict", {
+      const response = await fetch("https://mechanical-project-tns8.onrender.com/api/predict", {
         method: "POST",
         body: formData,
       });
