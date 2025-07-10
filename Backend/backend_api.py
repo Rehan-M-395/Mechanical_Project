@@ -7,38 +7,50 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)  # Allow requests from any frontend (like React)
 
-# Load your model (make sure the file exists)
+# Load your model
 model = joblib.load("best_model.joblib")
 
-# Root route to confirm backend is running
+# Root route
 @app.route('/')
 def home():
     return "✅ Backend is running! Use /api/predict to send CSV data."
 
-# Prediction route
+# Predict route
 @app.route('/api/predict', methods=['POST'])
 def predict():
     try:
-        # Get the uploaded file from the form-data
         file = request.files.get('file')
         if not file:
             return jsonify({"error": "No file uploaded"}), 400
 
-        # Read CSV data
         df = pd.read_csv(file)
 
-        # Validate data
         if df.empty:
             return jsonify({"error": "Uploaded file is empty"}), 400
 
-        # Make predictions using the loaded model
+        # Predict
         predictions = model.predict(df)
+        label = predictions[0]
 
-        return jsonify({"predictions": predictions.tolist()})
+        # Calculate basic features (you can customize more)
+        features = {
+            "Mean": float(df.mean().mean()),
+            "Median": float(df.median().mean()),
+            "Variance": float(df.var().mean()),
+            "Standard Deviation": float(df.std().mean()),
+            "Maximum": float(df.max().max()),
+            "Minimum": float(df.min().min()),
+            "Kurtosis": float(df.kurtosis().mean()),
+            "Skewness": float(df.skew().mean())
+        }
+
+        return jsonify({
+            "label": label,
+            "features": features
+        })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# Run locally (not used in Render deployment)
 if __name__ == '__main__':
     app.run(debug=True)
