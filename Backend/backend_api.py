@@ -6,9 +6,11 @@ from flask_cors import CORS
 from scipy.stats import kurtosis, skew, sem
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
 
-# Load the trained model
+# ✅ Allow only your Vercel frontend
+CORS(app, supports_credentials=True, origins=["https://mechanical-project.vercel.app"])
+
+# ✅ Load your trained model
 model = joblib.load('best_model.joblib')
 
 def calculate_statistics(points):
@@ -28,8 +30,12 @@ def calculate_statistics(points):
         'Mean': np.mean(data_np)
     }
 
-@app.route('/api/predict', methods=['POST'])
+@app.route('/api/predict', methods=['POST', 'OPTIONS'])
 def predict():
+    # ✅ Handle CORS preflight request
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'CORS preflight successful'}), 200
+
     try:
         if 'file' not in request.files:
             return jsonify({"error": "No file part in request"}), 400
@@ -42,15 +48,14 @@ def predict():
         # Read the CSV file into a DataFrame
         df = pd.read_csv(file)
 
-        # Assume the first column contains the signal/points
-        # Modify this if your target column has a specific name
+        # Use first column of CSV
         points = df.iloc[:, 0].dropna().values
 
         features = calculate_statistics(points)
         feature_vector = np.array(list(features.values())).reshape(1, -1)
         label = model.predict(feature_vector)[0]
 
-        # Convert label to native type
+        # Convert label to native Python type
         if isinstance(label, (np.integer, np.floating)):
             label = label.item()
         else:
