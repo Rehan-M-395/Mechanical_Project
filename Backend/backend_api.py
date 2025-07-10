@@ -51,6 +51,9 @@ def predict():
 
         points = df.iloc[:, 0].dropna().values
 
+        if len(points) == 0:
+            return jsonify({"error": "Uploaded file is empty or has no valid data."}), 400
+
         features = calculate_statistics(points)
         feature_vector = np.array(list(features.values())).reshape(1, -1)
         label = model.predict(feature_vector)[0]
